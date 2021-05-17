@@ -12,8 +12,8 @@ const (
    monsterResource                     = monstersResource + "/%d"
 )
 
-func getById(id uint32) (*MonsterDataContainer, error) {
-   ar := &MonsterDataContainer{}
+func getById(id uint32) (*DataContainer, error) {
+   ar := &DataContainer{}
    err := requests.Get(fmt.Sprintf(monsterResource, id), ar)
    if err != nil {
       return nil, err

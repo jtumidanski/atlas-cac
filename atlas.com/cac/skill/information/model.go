@@ -1,89 +1,109 @@
 package information
 
 type Model struct {
-   action        bool
-   element       string
-   animationTime uint32
-   effects       []Effect
+	action        bool
+	element       string
+	animationTime uint32
+	effects       []Effect
 }
 
 type Effect struct {
-   weaponAttack  uint16
-   magicAttack   uint16
-   weaponDefense uint16
-   magicDefense  uint16
-   accuracy      uint16
-   avoidability  uint16
-   speed         uint16
-   jump          uint16
-   hp            uint16
-   mp            uint16
-   hpr           float64
-   mpr           float64
-   mhprRate      uint16
-   mmprRate      uint16
-   mobSkill      uint16
-   mobSkillLevel uint16
-   mhpR          byte
-   mmpR          byte
-   hpCon         uint16
-   mpCon         uint16
-   duration      int32
-   target        uint32
-   barrier       uint32
-   mob           uint32
-   overtime      bool
-   repeatEffect  bool
-   moveTo        int32
-   cp            uint32
-   nuffSkill     uint32
-   skill         bool
-   x             int16
-   y             int16
-   mobCount      uint32
-   moneyCon      uint32
-   cooldown      uint32
-   morphId       uint32
-   ghost         uint32
-   fatigue       uint32
-   berserk       uint32
-   booster       uint32
-   prop          float64
-   itemCon       uint32
-   itemConNo     uint32
-   damage        uint32
-   attackCount   uint32
-   fixDamage     int32
-   //LT Point
-   //RB Point
-   bulletCount          uint16
-   bulletConsume        uint16
-   mapProtection        byte
-   cureAbnormalStatuses []string
-   statups              []Statup
+	weaponAttack  uint16
+	magicAttack   uint16
+	weaponDefense uint16
+	magicDefense  uint16
+	accuracy      uint16
+	avoidability  uint16
+	speed         uint16
+	jump          uint16
+	hp            uint16
+	mp            uint16
+	hpr           float64
+	mpr           float64
+	mhprRate      uint16
+	mmprRate      uint16
+	mobSkill      uint16
+	mobSkillLevel uint16
+	mhpR          byte
+	mmpR          byte
+	hpCon         uint16
+	mpCon         uint16
+	duration      int32
+	target        uint32
+	barrier       uint32
+	mob           uint32
+	overtime      bool
+	repeatEffect  bool
+	moveTo        int32
+	cp            uint32
+	nuffSkill     uint32
+	skill         bool
+	x             int16
+	y             int16
+	mobCount      uint32
+	moneyCon      uint32
+	cooldown      uint32
+	morphId       uint32
+	ghost         uint32
+	fatigue       uint32
+	berserk       uint32
+	booster       uint32
+	prop          float64
+	itemCon       uint32
+	itemConNo     uint32
+	damage        uint32
+	attackCount   uint32
+	fixDamage     int32
+	//LT Point
+	//RB Point
+	bulletCount          uint16
+	bulletConsume        uint16
+	mapProtection        byte
+	cureAbnormalStatuses []string
+	statups              []Statup
 }
 
 func (e Effect) AttackCount() uint32 {
-   return e.attackCount
+	return e.attackCount
 }
 
 func (e Effect) Cooldown() uint32 {
-   return e.cooldown
+	return e.cooldown
+}
+
+func (e Effect) Prop() float64 {
+	return e.prop
+}
+
+func (e Effect) X() int16 {
+	return e.x
+}
+
+func (e Effect) MP() uint16 {
+	return e.mp
+}
+
+func (e Effect) MPR() float64 {
+	return e.mpr
+}
+
+func (e Effect) MPCon() uint16 {
+	return e.mpCon
 }
 
 func (m Model) Effects() []Effect {
-   return m.effects
+	return m.effects
 }
 
 type Statup struct {
-   buff   string
-   amount uint32
+	buff   string
+	amount uint32
 }
 
 func (s Statup) Mask() string {
-   return s.buff
+	return s.buff
 }
 
 func (s Statup) Amount() uint32 {
-   return s.amount
+	return s.amount
 }

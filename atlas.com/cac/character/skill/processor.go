@@ -22,3 +22,25 @@ func GetSkillForCharacter(l logrus.FieldLogger) func(characterId uint32, skillId
 		return &sr, nil
 	}
 }
+
+func GetSkillsForCharacter(l logrus.FieldLogger) func(characterId uint32) ([]*Model, error) {
+	return func(characterId uint32) ([]*Model, error) {
+		r, err := requestSkills(characterId)
+		if err != nil {
+			l.WithError(err).Errorf("Unable to get skills for character %d.", characterId)
+			return nil, err
+		}
+
+		skills := make([]*Model, 0)
+		for _, s := range r.DataList() {
+			sid, err := strconv.ParseUint(s.Id, 10, 32)
+			if err != nil {
+				l.WithError(err).Errorf("Unable to parse response for skill %s retrieval for character %d.", s.Id, characterId)
+				return nil, err
+			}
+			sr := NewModel(uint32(sid), s.Attributes.Level, s.Attributes.MasterLevel, s.Attributes.Expiration, false, false)
+			skills = append(skills, &sr)
+		}
+		return skills, nil
+	}
+}
