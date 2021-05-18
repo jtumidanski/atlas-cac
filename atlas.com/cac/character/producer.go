@@ -132,3 +132,25 @@ func AdjustMana(l logrus.FieldLogger) func(characterId uint32, amount int16) {
 		producer(producers.CreateKey(int(characterId)), e)
 	}
 }
+
+type mpEaterEvent struct {
+	WorldId     byte   `json:"worldId"`
+	ChannelId   byte   `json:"channelId"`
+	MapId       uint32 `json:"mapId"`
+	CharacterId uint32 `json:"characterId"`
+	SkillId     uint32 `json:"skillId"`
+}
+
+func ShowMPEater(l logrus.FieldLogger) func(worldId byte, channelId byte, mapId uint32, characterId uint32, skillId uint32) {
+	producer := producers.ProduceEvent(l, "TOPIC_CHARACTER_MP_EATER_EVENT")
+	return func(worldId byte, channelId byte, mapId uint32, characterId uint32, skillId uint32) {
+		e := &mpEaterEvent{
+			WorldId:     worldId,
+			ChannelId:   channelId,
+			MapId:       mapId,
+			CharacterId: characterId,
+			SkillId:     skillId,
+		}
+		producer(producers.CreateKey(int(characterId)), e)
+	}
+}

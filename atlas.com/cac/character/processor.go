@@ -102,18 +102,18 @@ func processMPChange(l logrus.FieldLogger) func(worldId byte, channelId byte, ma
 	}
 }
 
-func processMPEater(l logrus.FieldLogger) func(worldId byte, channelId byte, mapId uint32, characterId uint32, allDamage map[uint32][]uint32) func(effect *information.Effect) {
-	return func(worldId byte, channelId byte, mapId uint32, characterId uint32, allDamage map[uint32][]uint32) func(effect *information.Effect) {
-		return func(effect *information.Effect) {
+func processMPEater(l logrus.FieldLogger) func(worldId byte, channelId byte, mapId uint32, characterId uint32, allDamage map[uint32][]uint32) func(skillId uint32, effect *information.Effect) {
+	return func(worldId byte, channelId byte, mapId uint32, characterId uint32, allDamage map[uint32][]uint32) func(skillId uint32, effect *information.Effect) {
+		return func(skillId uint32, effect *information.Effect) {
 			for mobId := range allDamage {
-				applyMPEater(l)(worldId, channelId, mapId, characterId, mobId, effect)
+				applyMPEater(l)(worldId, channelId, mapId, characterId, skillId, mobId, effect)
 			}
 		}
 	}
 }
 
-func applyMPEater(l logrus.FieldLogger) func(worldId byte, channelId byte, mapId uint32, characterId uint32, mobId uint32, effect *information.Effect) {
-	return func(worldId byte, channelId byte, mapId uint32, characterId uint32, mobId uint32, effect *information.Effect) {
+func applyMPEater(l logrus.FieldLogger) func(worldId byte, channelId byte, mapId uint32, characterId uint32, skillId uint32, mobId uint32, effect *information.Effect) {
+	return func(worldId byte, channelId byte, mapId uint32, characterId uint32, skillId uint32, mobId uint32, effect *information.Effect) {
 		success := false
 		if effect.Prop() == 1.0 {
 			success = true
@@ -141,12 +141,12 @@ func applyMPEater(l logrus.FieldLogger) func(worldId byte, channelId byte, mapId
 		l.Debugf("Applying MP Eater for character %d attack. They gained %d mana as a result.", characterId, mp)
 		//TODO lower monster mana
 		AdjustMana(l)(characterId, int16(mp))
-		//TODO SHOW MP EATER BUFF
+		ShowMPEater(l)(worldId, channelId, mapId, characterId, skillId)
 	}
 }
 
-func IfHasSkill(l logrus.FieldLogger) func(characterId uint32, exec func(effect *information.Effect), skillIds ...uint32) {
-	return func(characterId uint32, exec func(effect *information.Effect), skillIds ...uint32) {
+func IfHasSkill(l logrus.FieldLogger) func(characterId uint32, exec func(skillId uint32, effect *information.Effect), skillIds ...uint32) {
+	return func(characterId uint32, exec func(skillId uint32, effect *information.Effect), skillIds ...uint32) {
 		if len(skillIds) == 0 {
 			return
 		}
@@ -157,6 +157,7 @@ func IfHasSkill(l logrus.FieldLogger) func(characterId uint32, exec func(effect 
 			return
 		}
 
+		var skillId uint32
 		var effect *information.Effect
 		for _, s := range skills {
 			for _, sid := range skillIds {
@@ -166,6 +167,7 @@ func IfHasSkill(l logrus.FieldLogger) func(characterId uint32, exec func(effect 
 						l.WithError(err).Errorf("Cannot retrieve effect for skill %d.", sid)
 						return
 					}
+					skillId = sid
 					effect = &si.Effects()[s.Level()-1]
 				}
 			}
@@ -175,7 +177,7 @@ func IfHasSkill(l logrus.FieldLogger) func(characterId uint32, exec func(effect 
 			return
 		}
 
-		exec(effect)
+		exec(skillId, effect)
 	}
 }
 
