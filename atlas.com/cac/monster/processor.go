@@ -1,14 +1,18 @@
 package monster
 
-func GetMonster(id uint32) (*Monster, error) {
-	resp, err := getById(id)
-	if err != nil {
-		return nil, err
-	}
+import "github.com/sirupsen/logrus"
 
-	d := resp.Data()
-	n := makeMonster(id, d.Attributes)
-	return &n, nil
+func GetMonster(l logrus.FieldLogger) func(id uint32) (*Monster, error) {
+	return func(id uint32) (*Monster, error) {
+		resp, err := getById(l)(id)
+		if err != nil {
+			return nil, err
+		}
+
+		d := resp.Data()
+		n := makeMonster(id, d.Attributes)
+		return &n, nil
+	}
 }
 
 func makeMonster(id uint32, att Attributes) Monster {

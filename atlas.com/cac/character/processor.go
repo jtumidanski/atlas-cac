@@ -43,7 +43,7 @@ func ProcessAttack(l logrus.FieldLogger) func(worldId byte, channelId byte, mapI
 		l.Debugf("Attack count %d.", attackCount)
 
 		for k, v := range allDamage {
-			m, err := monster.GetMonster(k)
+			m, err := monster.GetMonster(l)(k)
 			if err != nil {
 				l.WithError(err).Errorf("Cannot locate monster %d which the attack from %d hit.", k, characterId)
 				continue
@@ -64,7 +64,7 @@ func ProcessAttack(l logrus.FieldLogger) func(worldId byte, channelId byte, mapI
 
 func processMPChange(l logrus.FieldLogger) func(worldId byte, channelId byte, mapId uint32, characterId uint32, skillId uint32, effect *information.Effect) {
 	return func(worldId byte, channelId byte, mapId uint32, characterId uint32, skillId uint32, effect *information.Effect) {
-		c, err := GetCharacterById(characterId)
+		c, err := GetCharacterById(l)(characterId)
 		if err != nil {
 			l.WithError(err).Errorf("Unable to locate character %d who used skill %d.", characterId, skillId)
 			return
@@ -127,7 +127,7 @@ func applyMPEater(l logrus.FieldLogger) func(worldId byte, channelId byte, mapId
 		}
 
 		//TODO determine if mob is boss, skip if not
-		m, err := monster.GetMonster(mobId)
+		m, err := monster.GetMonster(l)(mobId)
 		if err != nil {
 			l.WithError(err).Errorf("Unable to locate monster to apply MP Eater to.")
 			return
@@ -209,16 +209,18 @@ func GetSkillEffectWithLevel(l logrus.FieldLogger) func(skillId uint32, skillLev
 	}
 }
 
-func GetCharacterById(characterId uint32) (*Model, error) {
-	cs, err := requestCharacter(characterId)
-	if err != nil {
-		return nil, err
+func GetCharacterById(l logrus.FieldLogger) func(characterId uint32) (*Model, error) {
+	return func(characterId uint32) (*Model, error) {
+		cs, err := requestCharacter(l)(characterId)
+		if err != nil {
+			return nil, err
+		}
+		ca := makeCharacterAttributes(cs.Data())
+		if ca == nil {
+			return nil, errors.New("unable to make character attributes")
+		}
+		return ca, nil
 	}
-	ca := makeCharacterAttributes(cs.Data())
-	if ca == nil {
-		return nil, errors.New("unable to make character attributes")
-	}
-	return ca, nil
 }
 
 func makeCharacterAttributes(ca *dataBody) *Model {
