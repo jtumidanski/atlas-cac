@@ -2,6 +2,7 @@ package monster
 
 import (
 	"atlas-cac/kafka/producers"
+	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 )
 
@@ -14,8 +15,8 @@ type damageEvent struct {
 	Damage      uint32 `json:"damage"`
 }
 
-func Damage(l logrus.FieldLogger) func(worldId byte, channelId byte, mapId uint32, uniqueId uint32, characterId uint32, damage uint32) {
-	producer := producers.ProduceEvent(l, "TOPIC_MONSTER_DAMAGE")
+func Damage(l logrus.FieldLogger, span opentracing.Span) func(worldId byte, channelId byte, mapId uint32, uniqueId uint32, characterId uint32, damage uint32) {
+	producer := producers.ProduceEvent(l, span, "TOPIC_MONSTER_DAMAGE")
 	return func(worldId byte, channelId byte, mapId uint32, uniqueId uint32, characterId uint32, damage uint32) {
 		e := &damageEvent{
 			WorldId:     worldId,

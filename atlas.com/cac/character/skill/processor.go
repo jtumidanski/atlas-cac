@@ -1,13 +1,14 @@
 package skill
 
 import (
+	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 	"strconv"
 )
 
-func GetSkillForCharacter(l logrus.FieldLogger) func(characterId uint32, skillId uint32) (*Model, error) {
+func GetSkillForCharacter(l logrus.FieldLogger, span opentracing.Span) func(characterId uint32, skillId uint32) (*Model, error) {
 	return func(characterId uint32, skillId uint32) (*Model, error) {
-		r, err := requestSkill(l)(characterId, skillId)
+		r, err := requestSkill(l, span)(characterId, skillId)
 		if err != nil {
 			l.WithError(err).Errorf("Unable to get skill %d for character %d.", skillId, characterId)
 			return nil, err
@@ -23,9 +24,9 @@ func GetSkillForCharacter(l logrus.FieldLogger) func(characterId uint32, skillId
 	}
 }
 
-func GetSkillsForCharacter(l logrus.FieldLogger) func(characterId uint32) ([]*Model, error) {
+func GetSkillsForCharacter(l logrus.FieldLogger, span opentracing.Span) func(characterId uint32) ([]*Model, error) {
 	return func(characterId uint32) ([]*Model, error) {
-		r, err := requestSkills(l)(characterId)
+		r, err := requestSkills(l, span)(characterId)
 		if err != nil {
 			l.WithError(err).Errorf("Unable to get skills for character %d.", characterId)
 			return nil, err

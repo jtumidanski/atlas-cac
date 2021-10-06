@@ -3,6 +3,7 @@ package monster
 import (
 	"atlas-cac/rest/requests"
 	"fmt"
+	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 )
 
@@ -13,10 +14,10 @@ const (
 	monsterResource                     = monstersResource + "/%d"
 )
 
-func getById(l logrus.FieldLogger) func(id uint32) (*DataContainer, error) {
+func getById(l logrus.FieldLogger, span opentracing.Span) func(id uint32) (*DataContainer, error) {
 	return func(id uint32) (*DataContainer, error) {
 		ar := &DataContainer{}
-		err := requests.Get(l)(fmt.Sprintf(monsterResource, id), ar)
+		err := requests.Get(l, span)(fmt.Sprintf(monsterResource, id), ar)
 		if err != nil {
 			return nil, err
 		}

@@ -1,10 +1,13 @@
 package monster
 
-import "github.com/sirupsen/logrus"
+import (
+	"github.com/opentracing/opentracing-go"
+	"github.com/sirupsen/logrus"
+)
 
-func GetMonster(l logrus.FieldLogger) func(id uint32) (*Monster, error) {
+func GetMonster(l logrus.FieldLogger, span opentracing.Span) func(id uint32) (*Monster, error) {
 	return func(id uint32) (*Monster, error) {
-		resp, err := getById(l)(id)
+		resp, err := getById(l, span)(id)
 		if err != nil {
 			return nil, err
 		}

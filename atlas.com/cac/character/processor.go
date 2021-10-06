@@ -7,23 +7,24 @@ import (
 	"atlas-cac/skill"
 	"atlas-cac/skill/information"
 	"errors"
+	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 	"math"
 	"math/rand"
 	"strconv"
 )
 
-func ProcessAttack(l logrus.FieldLogger) func(worldId byte, channelId byte, mapId uint32, characterId uint32, skillId uint32, skillLevel byte, attacked byte, damaged byte, attackedAndDamaged byte, stance byte, direction byte, rangedDirection byte, charge uint32, display byte, ranged bool, magic bool, speed byte, allDamage map[uint32][]uint32, x int16, y int16) error {
+func ProcessAttack(l logrus.FieldLogger, span opentracing.Span) func(worldId byte, channelId byte, mapId uint32, characterId uint32, skillId uint32, skillLevel byte, attacked byte, damaged byte, attackedAndDamaged byte, stance byte, direction byte, rangedDirection byte, charge uint32, display byte, ranged bool, magic bool, speed byte, allDamage map[uint32][]uint32, x int16, y int16) error {
 	return func(worldId byte, channelId byte, mapId uint32, characterId uint32, skillId uint32, skillLevel byte, attacked byte, damaged byte, attackedAndDamaged byte, stance byte, direction byte, rangedDirection byte, charge uint32, display byte, ranged bool, magic bool, speed byte, allDamage map[uint32][]uint32, x int16, y int16) error {
 		//TODO skillLevel is not a real value.
 		attackCount := uint32(1)
-		attackEffect, ok := GetSkillEffect(l)(characterId, skillId)
+		attackEffect, ok := GetSkillEffect(l, span)(characterId, skillId)
 		if !ok {
 			return errors.New("cannot locate effect for skill being used")
 		}
 
 		if !ranged && !magic {
-			CloseRangeAttack(l)(worldId, channelId, mapId, characterId, skillId, skillLevel, attackedAndDamaged, display, direction, stance, speed, allDamage)
+			CloseRangeAttack(l, span)(worldId, channelId, mapId, characterId, skillId, skillLevel, attackedAndDamaged, display, direction, stance, speed, allDamage)
 		} else if ranged {
 			// ranged
 		} else if magic {
@@ -31,19 +32,19 @@ func ProcessAttack(l logrus.FieldLogger) func(worldId byte, channelId byte, mapI
 			if skill.Is(skillId, skill.EvanFireBreath, skill.EvanIceBreath, skill.FirePoisonArchMagicianBigBang, skill.IceLighteningArchMagicianBigBang, skill.BishopBigBang) {
 				adjustedCharge = int32(charge)
 			}
-			MagicAttack(l)(worldId, channelId, mapId, characterId, skillId, skillLevel, attackedAndDamaged, display, direction, stance, speed, adjustedCharge, allDamage)
+			MagicAttack(l, span)(worldId, channelId, mapId, characterId, skillId, skillLevel, attackedAndDamaged, display, direction, stance, speed, adjustedCharge, allDamage)
 			attackCount = attackEffect.AttackCount()
 			if attackEffect.Cooldown() > 0 {
 				// apply cooldown
 			}
 		}
 
-		processMPChange(l)(worldId, channelId, mapId, characterId, skillId, attackEffect)
+		processMPChange(l, span)(worldId, channelId, mapId, characterId, skillId, attackEffect)
 
 		l.Debugf("Attack count %d.", attackCount)
 
 		for k, v := range allDamage {
-			m, err := monster.GetMonster(l)(k)
+			m, err := monster.GetMonster(l, span)(k)
 			if err != nil {
 				l.WithError(err).Errorf("Cannot locate monster %d which the attack from %d hit.", k, characterId)
 				continue
@@ -52,19 +53,19 @@ func ProcessAttack(l logrus.FieldLogger) func(worldId byte, channelId byte, mapI
 			for _, e := range v {
 				totalDamage += e
 			}
-			monster.Damage(l)(worldId, channelId, mapId, m.UniqueId(), characterId, totalDamage)
+			monster.Damage(l, span)(worldId, channelId, mapId, m.UniqueId(), characterId, totalDamage)
 		}
 
 		if magic {
-			IfHasSkill(l)(characterId, processMPEater(l)(worldId, channelId, mapId, characterId, allDamage), skill.FirePoisonWizardMPEater, skill.IceLightningWizardMPEater, skill.ClericMPEater)
+			IfHasSkill(l, span)(characterId, processMPEater(l, span)(worldId, channelId, mapId, characterId, allDamage), skill.FirePoisonWizardMPEater, skill.IceLightningWizardMPEater, skill.ClericMPEater)
 		}
 		return nil
 	}
 }
 
-func processMPChange(l logrus.FieldLogger) func(worldId byte, channelId byte, mapId uint32, characterId uint32, skillId uint32, effect *information.Effect) {
+func processMPChange(l logrus.FieldLogger, span opentracing.Span) func(worldId byte, channelId byte, mapId uint32, characterId uint32, skillId uint32, effect *information.Effect) {
 	return func(worldId byte, channelId byte, mapId uint32, characterId uint32, skillId uint32, effect *information.Effect) {
-		c, err := GetCharacterById(l)(characterId)
+		c, err := GetCharacterById(l, span)(characterId)
 		if err != nil {
 			l.WithError(err).Errorf("Unable to locate character %d who used skill %d.", characterId, skillId)
 			return
@@ -90,7 +91,7 @@ func processMPChange(l logrus.FieldLogger) func(worldId byte, channelId byte, ma
 				skillId = skill.EvanMagicAmplification
 			}
 			if skillId != 0 {
-				e, ok := GetSkillEffect(l)(characterId, skillId)
+				e, ok := GetSkillEffect(l, span)(characterId, skillId)
 				if ok {
 					mod = float64(e.X() / 100.0)
 				}
@@ -98,21 +99,21 @@ func processMPChange(l logrus.FieldLogger) func(worldId byte, channelId byte, ma
 			mpChange -= int16(effect.MPCon()) * int16(mod)
 			//TODO  account for infinity and concentrate
 		}
-		AdjustMana(l)(characterId, mpChange)
+		AdjustMana(l, span)(characterId, mpChange)
 	}
 }
 
-func processMPEater(l logrus.FieldLogger) func(worldId byte, channelId byte, mapId uint32, characterId uint32, allDamage map[uint32][]uint32) func(skillId uint32, effect *information.Effect) {
+func processMPEater(l logrus.FieldLogger, span opentracing.Span) func(worldId byte, channelId byte, mapId uint32, characterId uint32, allDamage map[uint32][]uint32) func(skillId uint32, effect *information.Effect) {
 	return func(worldId byte, channelId byte, mapId uint32, characterId uint32, allDamage map[uint32][]uint32) func(skillId uint32, effect *information.Effect) {
 		return func(skillId uint32, effect *information.Effect) {
 			for mobId := range allDamage {
-				applyMPEater(l)(worldId, channelId, mapId, characterId, skillId, mobId, effect)
+				applyMPEater(l, span)(worldId, channelId, mapId, characterId, skillId, mobId, effect)
 			}
 		}
 	}
 }
 
-func applyMPEater(l logrus.FieldLogger) func(worldId byte, channelId byte, mapId uint32, characterId uint32, skillId uint32, mobId uint32, effect *information.Effect) {
+func applyMPEater(l logrus.FieldLogger, span opentracing.Span) func(worldId byte, channelId byte, mapId uint32, characterId uint32, skillId uint32, mobId uint32, effect *information.Effect) {
 	return func(worldId byte, channelId byte, mapId uint32, characterId uint32, skillId uint32, mobId uint32, effect *information.Effect) {
 		success := false
 		if effect.Prop() == 1.0 {
@@ -127,7 +128,7 @@ func applyMPEater(l logrus.FieldLogger) func(worldId byte, channelId byte, mapId
 		}
 
 		//TODO determine if mob is boss, skip if not
-		m, err := monster.GetMonster(l)(mobId)
+		m, err := monster.GetMonster(l, span)(mobId)
 		if err != nil {
 			l.WithError(err).Errorf("Unable to locate monster to apply MP Eater to.")
 			return
@@ -140,18 +141,18 @@ func applyMPEater(l logrus.FieldLogger) func(worldId byte, channelId byte, mapId
 
 		l.Debugf("Applying MP Eater for character %d attack. They gained %d mana as a result.", characterId, mp)
 		//TODO lower monster mana
-		AdjustMana(l)(characterId, int16(mp))
-		ShowMPEater(l)(worldId, channelId, mapId, characterId, skillId)
+		AdjustMana(l, span)(characterId, int16(mp))
+		ShowMPEater(l, span)(worldId, channelId, mapId, characterId, skillId)
 	}
 }
 
-func IfHasSkill(l logrus.FieldLogger) func(characterId uint32, exec func(skillId uint32, effect *information.Effect), skillIds ...uint32) {
+func IfHasSkill(l logrus.FieldLogger, span opentracing.Span) func(characterId uint32, exec func(skillId uint32, effect *information.Effect), skillIds ...uint32) {
 	return func(characterId uint32, exec func(skillId uint32, effect *information.Effect), skillIds ...uint32) {
 		if len(skillIds) == 0 {
 			return
 		}
 
-		skills, err := skill2.GetSkillsForCharacter(l)(characterId)
+		skills, err := skill2.GetSkillsForCharacter(l, span)(characterId)
 		if err != nil {
 			l.WithError(err).Errorf("Unable to retrieve skills for character %d.", characterId)
 			return
@@ -162,7 +163,7 @@ func IfHasSkill(l logrus.FieldLogger) func(characterId uint32, exec func(skillId
 		for _, s := range skills {
 			for _, sid := range skillIds {
 				if s.Id() == sid {
-					si, err := information.GetById(l)(sid)
+					si, err := information.GetById(l, span)(sid)
 					if err != nil {
 						l.WithError(err).Errorf("Cannot retrieve effect for skill %d.", sid)
 						return
@@ -181,9 +182,9 @@ func IfHasSkill(l logrus.FieldLogger) func(characterId uint32, exec func(skillId
 	}
 }
 
-func GetSkillEffect(l logrus.FieldLogger) func(characterId uint32, skillId uint32) (*information.Effect, bool) {
+func GetSkillEffect(l logrus.FieldLogger, span opentracing.Span) func(characterId uint32, skillId uint32) (*information.Effect, bool) {
 	return func(characterId uint32, skillId uint32) (*information.Effect, bool) {
-		s, err := skill2.GetSkillForCharacter(l)(characterId, skillId)
+		s, err := skill2.GetSkillForCharacter(l, span)(characterId, skillId)
 		if err != nil {
 			l.WithError(err).Errorf("Unable to retrieve skill %d information for character %d.", skillId, characterId)
 			return nil, false
@@ -193,13 +194,13 @@ func GetSkillEffect(l logrus.FieldLogger) func(characterId uint32, skillId uint3
 			return nil, false
 		}
 
-		return GetSkillEffectWithLevel(l)(skillId, s.Level())
+		return GetSkillEffectWithLevel(l, span)(skillId, s.Level())
 	}
 }
 
-func GetSkillEffectWithLevel(l logrus.FieldLogger) func(skillId uint32, skillLevel uint8) (*information.Effect, bool) {
+func GetSkillEffectWithLevel(l logrus.FieldLogger, span opentracing.Span) func(skillId uint32, skillLevel uint8) (*information.Effect, bool) {
 	return func(skillId uint32, skillLevel uint8) (*information.Effect, bool) {
-		i, err := information.GetById(l)(skillId)
+		i, err := information.GetById(l, span)(skillId)
 		if err != nil {
 			l.WithError(err).Errorf("Unable to retrieve information for skill %d.", skillId)
 			return nil, false
@@ -209,9 +210,9 @@ func GetSkillEffectWithLevel(l logrus.FieldLogger) func(skillId uint32, skillLev
 	}
 }
 
-func GetCharacterById(l logrus.FieldLogger) func(characterId uint32) (*Model, error) {
+func GetCharacterById(l logrus.FieldLogger, span opentracing.Span) func(characterId uint32) (*Model, error) {
 	return func(characterId uint32) (*Model, error) {
-		cs, err := requestCharacter(l)(characterId)
+		cs, err := requestCharacter(l, span)(characterId)
 		if err != nil {
 			return nil, err
 		}

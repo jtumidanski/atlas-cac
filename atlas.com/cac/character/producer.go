@@ -2,6 +2,7 @@ package character
 
 import (
 	"atlas-cac/kafka/producers"
+	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 )
 
@@ -20,8 +21,8 @@ type closeRangeAttackEvent struct {
 	Damage             map[uint32][]uint32 `json:"damage"`
 }
 
-func CloseRangeAttack(l logrus.FieldLogger) func(worldId byte, channelId byte, mapId uint32, characterId uint32, skillId uint32, skillLevel byte, attackedAndDamaged byte, display byte, direction byte, stance byte, speed byte, damage map[uint32][]uint32) {
-	producer := producers.ProduceEvent(l, "TOPIC_CLOSE_RANGE_ATTACK_EVENT")
+func CloseRangeAttack(l logrus.FieldLogger, span opentracing.Span) func(worldId byte, channelId byte, mapId uint32, characterId uint32, skillId uint32, skillLevel byte, attackedAndDamaged byte, display byte, direction byte, stance byte, speed byte, damage map[uint32][]uint32) {
+	producer := producers.ProduceEvent(l, span, "TOPIC_CLOSE_RANGE_ATTACK_EVENT")
 	return func(worldId byte, channelId byte, mapId uint32, characterId uint32, skillId uint32, skillLevel byte, attackedAndDamaged byte, display byte, direction byte, stance byte, speed byte, damage map[uint32][]uint32) {
 		e := &closeRangeAttackEvent{
 			WorldId:            worldId,
@@ -57,8 +58,8 @@ type rangeAttackEvent struct {
 	Display            byte                `json:"display"`
 }
 
-func RangeAttack(l logrus.FieldLogger) func(worldId byte, channelId byte, mapId uint32, characterId uint32, skillId uint32, skillLevel byte, attackedAndDamaged byte, display byte, direction byte, stance byte, speed byte, projectile uint32, damage map[uint32][]uint32) {
-	producer := producers.ProduceEvent(l, "TOPIC_RANGE_ATTACK_EVENT")
+func RangeAttack(l logrus.FieldLogger, span opentracing.Span) func(worldId byte, channelId byte, mapId uint32, characterId uint32, skillId uint32, skillLevel byte, attackedAndDamaged byte, display byte, direction byte, stance byte, speed byte, projectile uint32, damage map[uint32][]uint32) {
+	producer := producers.ProduceEvent(l, span, "TOPIC_RANGE_ATTACK_EVENT")
 	return func(worldId byte, channelId byte, mapId uint32, characterId uint32, skillId uint32, skillLevel byte, attackedAndDamaged byte, display byte, direction byte, stance byte, speed byte, projectile uint32, damage map[uint32][]uint32) {
 		e := &rangeAttackEvent{
 			WorldId:            worldId,
@@ -95,8 +96,8 @@ type magicAttackEvent struct {
 	Charge             int32               `json:"charge"`
 }
 
-func MagicAttack(l logrus.FieldLogger) func(worldId byte, channelId byte, mapId uint32, characterId uint32, skillId uint32, skillLevel byte, attackedAndDamaged byte, display byte, direction byte, stance byte, speed byte, charge int32, damage map[uint32][]uint32) {
-	producer := producers.ProduceEvent(l, "TOPIC_MAGIC_ATTACK_EVENT")
+func MagicAttack(l logrus.FieldLogger, span opentracing.Span) func(worldId byte, channelId byte, mapId uint32, characterId uint32, skillId uint32, skillLevel byte, attackedAndDamaged byte, display byte, direction byte, stance byte, speed byte, charge int32, damage map[uint32][]uint32) {
+	producer := producers.ProduceEvent(l, span, "TOPIC_MAGIC_ATTACK_EVENT")
 	return func(worldId byte, channelId byte, mapId uint32, characterId uint32, skillId uint32, skillLevel byte, attackedAndDamaged byte, display byte, direction byte, stance byte, speed byte, charge int32, damage map[uint32][]uint32) {
 		e := &magicAttackEvent{
 			WorldId:            worldId,
@@ -122,8 +123,8 @@ type adjustManaEvent struct {
 	Amount      int16  `json:"amount"`
 }
 
-func AdjustMana(l logrus.FieldLogger) func(characterId uint32, amount int16) {
-	producer := producers.ProduceEvent(l, "TOPIC_ADJUST_MANA")
+func AdjustMana(l logrus.FieldLogger, span opentracing.Span) func(characterId uint32, amount int16) {
+	producer := producers.ProduceEvent(l, span, "TOPIC_ADJUST_MANA")
 	return func(characterId uint32, amount int16) {
 		e := &adjustManaEvent{
 			CharacterId: characterId,
@@ -141,8 +142,8 @@ type mpEaterEvent struct {
 	SkillId     uint32 `json:"skillId"`
 }
 
-func ShowMPEater(l logrus.FieldLogger) func(worldId byte, channelId byte, mapId uint32, characterId uint32, skillId uint32) {
-	producer := producers.ProduceEvent(l, "TOPIC_CHARACTER_MP_EATER_EVENT")
+func ShowMPEater(l logrus.FieldLogger, span opentracing.Span) func(worldId byte, channelId byte, mapId uint32, characterId uint32, skillId uint32) {
+	producer := producers.ProduceEvent(l, span, "TOPIC_CHARACTER_MP_EATER_EVENT")
 	return func(worldId byte, channelId byte, mapId uint32, characterId uint32, skillId uint32) {
 		e := &mpEaterEvent{
 			WorldId:     worldId,
