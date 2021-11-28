@@ -1,9 +1,13 @@
 package monster
 
-import "atlas-cac/rest/response"
+import (
+	"atlas-cac/rest/response"
+	"encoding/json"
+)
 
 type DataContainer struct {
-	data response.DataSegment
+	data     response.DataSegment
+	included response.DataSegment
 }
 
 type DataBody struct {
@@ -33,6 +37,19 @@ type Attributes struct {
 	MaxMp              int           `json:"maxMp"`
 	Mp                 int           `json:"mp"`
 	DamageEntries      []DamageEntry `json:"damageEntries"`
+}
+
+func (c *DataContainer) MarshalJSON() ([]byte, error) {
+	t := struct {
+		Data     interface{} `json:"data"`
+		Included interface{} `json:"included"`
+	}{}
+	if len(c.data) == 1 {
+		t.Data = c.data[0]
+	} else {
+		t.Data = c.data
+	}
+	return json.Marshal(t)
 }
 
 func (c *DataContainer) UnmarshalJSON(data []byte) error {

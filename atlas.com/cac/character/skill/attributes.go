@@ -1,6 +1,9 @@
 package skill
 
-import "atlas-cac/rest/response"
+import (
+	"atlas-cac/rest/response"
+	"encoding/json"
+)
 
 type dataContainer struct {
 	data     response.DataSegment
@@ -19,27 +22,40 @@ type attributes struct {
 	Expiration  int64 `json:"expiration"`
 }
 
-func (a *dataContainer) UnmarshalJSON(data []byte) error {
+func (c *dataContainer) MarshalJSON() ([]byte, error) {
+	t := struct {
+		Data     interface{} `json:"data"`
+		Included interface{} `json:"included"`
+	}{}
+	if len(c.data) == 1 {
+		t.Data = c.data[0]
+	} else {
+		t.Data = c.data
+	}
+	return json.Marshal(t)
+}
+
+func (c *dataContainer) UnmarshalJSON(data []byte) error {
 	d, i, err := response.UnmarshalRoot(data, response.MapperFunc(emptySkillData))
 	if err != nil {
 		return err
 	}
 
-	a.data = d
-	a.included = i
+	c.data = d
+	c.included = i
 	return nil
 }
 
-func (a *dataContainer) Data() *dataBody {
-	if len(a.data) >= 1 {
-		return a.data[0].(*dataBody)
+func (c *dataContainer) Data() *dataBody {
+	if len(c.data) >= 1 {
+		return c.data[0].(*dataBody)
 	}
 	return nil
 }
 
-func (a *dataContainer) DataList() []dataBody {
+func (c *dataContainer) DataList() []dataBody {
 	var r = make([]dataBody, 0)
-	for _, x := range a.data {
+	for _, x := range c.data {
 		r = append(r, *x.(*dataBody))
 	}
 	return r
