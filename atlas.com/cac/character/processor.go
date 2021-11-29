@@ -18,9 +18,14 @@ func ProcessAttack(l logrus.FieldLogger, span opentracing.Span) func(worldId byt
 	return func(worldId byte, channelId byte, mapId uint32, characterId uint32, skillId uint32, skillLevel byte, attacked byte, damaged byte, attackedAndDamaged byte, stance byte, direction byte, rangedDirection byte, charge uint32, display byte, ranged bool, magic bool, speed byte, allDamage map[uint32][]uint32, x int16, y int16) error {
 		//TODO skillLevel is not a real value.
 		attackCount := uint32(1)
-		attackEffect, ok := GetSkillEffect(l, span)(characterId, skillId)
-		if !ok {
-			return errors.New("cannot locate effect for skill being used")
+
+		attackEffect := &information.Effect{}
+		if skillId > 0 {
+			ok := false
+			attackEffect, ok = GetSkillEffect(l, span)(characterId, skillId)
+			if !ok {
+				return errors.New("cannot locate effect for skill being used")
+			}
 		}
 
 		if !ranged && !magic {
