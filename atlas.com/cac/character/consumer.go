@@ -1,9 +1,15 @@
 package character
 
 import (
+	"atlas-cac/kafka/consumers"
 	"atlas-cac/kafka/handler"
 	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
+)
+
+const (
+	consumerName = "character_attack_command"
+	topicToken   = "TOPIC_CHARACTER_ATTACK_COMMAND"
 )
 
 type attackCommand struct {
@@ -29,23 +35,17 @@ type attackCommand struct {
 	Y                        int16               `json:"y"`
 }
 
-func EmptyAttackCommandCreator() handler.EmptyEventCreator {
-	return func() interface{} {
-		return &attackCommand{}
-	}
+func NewConsumer(groupId string) consumers.Config[attackCommand] {
+	return consumers.NewConfiguration[attackCommand](consumerName, topicToken, groupId, HandleAttackCommand())
 }
 
-func HandleAttackCommand() handler.EventHandler {
-	return func(l logrus.FieldLogger, span opentracing.Span, c interface{}) {
-		if command, ok := c.(*attackCommand); ok {
-			err := ProcessAttack(l, span)(command.WorldId, command.ChannelId, command.MapId, command.CharacterId, command.SkillId, command.SkillLevel, command.NumberAttacked, command.NumberDamaged,
-				command.NumberAttackedAndDamaged, command.Stance, command.Direction, command.RangedDirection, command.Charge, command.Display,
-				command.Ranged, command.Magic, command.Speed, command.AllDamage, command.X, command.Y)
-			if err != nil {
-				l.WithError(err).Errorf("Unable to process attack for character %d.", command.CharacterId)
-			}
-		} else {
-			l.Errorf("Unable to cast event provided to handler")
+func HandleAttackCommand() handler.EventHandler[attackCommand] {
+	return func(l logrus.FieldLogger, span opentracing.Span, command attackCommand) {
+		err := ProcessAttack(l, span)(command.WorldId, command.ChannelId, command.MapId, command.CharacterId, command.SkillId, command.SkillLevel, command.NumberAttacked, command.NumberDamaged,
+			command.NumberAttackedAndDamaged, command.Stance, command.Direction, command.RangedDirection, command.Charge, command.Display,
+			command.Ranged, command.Magic, command.Speed, command.AllDamage, command.X, command.Y)
+		if err != nil {
+			l.WithError(err).Errorf("Unable to process attack for character %d.", command.CharacterId)
 		}
 	}
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"atlas-cac/character"
 	"atlas-cac/kafka/consumers"
 	"atlas-cac/logger"
 	"atlas-cac/tracing"
@@ -13,6 +14,7 @@ import (
 )
 
 const serviceName = "atlas-cac"
+const consumerGroupId = "Character Attack Coordinator Service"
 
 func main() {
 	l := logger.CreateLogger(serviceName)
@@ -32,7 +34,8 @@ func main() {
 		}
 	}(tc)
 
-	consumers.CreateEventConsumers(l, ctx, wg)
+	consumers.CreateEventConsumers(l, ctx, wg,
+		character.NewConsumer(consumerGroupId))
 
 	// trap sigterm or interrupt and gracefully shutdown the server
 	c := make(chan os.Signal, 1)
