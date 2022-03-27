@@ -8,7 +8,7 @@ import (
 
 func GetSkillForCharacter(l logrus.FieldLogger, span opentracing.Span) func(characterId uint32, skillId uint32) (*Model, error) {
 	return func(characterId uint32, skillId uint32) (*Model, error) {
-		r, err := requestSkill(l, span)(characterId, skillId)
+		r, err := requestSkill(characterId, skillId)(l, span)
 		if err != nil {
 			l.WithError(err).Errorf("Unable to get skill %d for character %d.", skillId, characterId)
 			return nil, err
@@ -19,14 +19,15 @@ func GetSkillForCharacter(l logrus.FieldLogger, span opentracing.Span) func(char
 			l.WithError(err).Errorf("Unable to parse response for skill %d retrieval for character %d.", skillId, characterId)
 			return nil, err
 		}
-		sr := NewModel(uint32(sid), r.Data().Attributes.Level, r.Data().Attributes.MasterLevel, r.Data().Attributes.Expiration, false, false)
+		attr := r.Data().Attributes
+		sr := NewModel(uint32(sid), attr.Level, attr.MasterLevel, attr.Expiration, false, false)
 		return &sr, nil
 	}
 }
 
 func GetSkillsForCharacter(l logrus.FieldLogger, span opentracing.Span) func(characterId uint32) ([]*Model, error) {
 	return func(characterId uint32) ([]*Model, error) {
-		r, err := requestSkills(l, span)(characterId)
+		r, err := requestSkills(characterId)(l, span)
 		if err != nil {
 			l.WithError(err).Errorf("Unable to get skills for character %d.", characterId)
 			return nil, err
@@ -39,7 +40,8 @@ func GetSkillsForCharacter(l logrus.FieldLogger, span opentracing.Span) func(cha
 				l.WithError(err).Errorf("Unable to parse response for skill %s retrieval for character %d.", s.Id, characterId)
 				return nil, err
 			}
-			sr := NewModel(uint32(sid), s.Attributes.Level, s.Attributes.MasterLevel, s.Attributes.Expiration, false, false)
+			attr := s.Attributes
+			sr := NewModel(uint32(sid), attr.Level, attr.MasterLevel, attr.Expiration, false, false)
 			skills = append(skills, &sr)
 		}
 		return skills, nil

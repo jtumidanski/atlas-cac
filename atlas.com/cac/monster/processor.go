@@ -7,7 +7,7 @@ import (
 
 func GetMonster(l logrus.FieldLogger, span opentracing.Span) func(id uint32) (*Monster, error) {
 	return func(id uint32) (*Monster, error) {
-		resp, err := getById(l, span)(id)
+		resp, err := getById(id)(l, span)
 		if err != nil {
 			return nil, err
 		}
@@ -18,6 +18,6 @@ func GetMonster(l logrus.FieldLogger, span opentracing.Span) func(id uint32) (*M
 	}
 }
 
-func makeMonster(id uint32, att Attributes) Monster {
+func makeMonster(id uint32, att attributes) Monster {
 	return NewMonster(id, att.ControlCharacterId, att.MonsterId, att.X, att.Y, att.Stance, att.FH, att.Team, att.MaxHp, att.Hp, att.MaxMp, att.Mp)
 }
