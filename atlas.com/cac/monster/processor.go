@@ -5,7 +5,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-func GetMonster(l logrus.FieldLogger, span opentracing.Span) func(id uint32) (*Monster, error) {
+func GetById(l logrus.FieldLogger, span opentracing.Span) func(id uint32) (*Monster, error) {
 	return func(id uint32) (*Monster, error) {
 		resp, err := getById(id)(l, span)
 		if err != nil {
@@ -16,6 +16,10 @@ func GetMonster(l logrus.FieldLogger, span opentracing.Span) func(id uint32) (*M
 		n := makeMonster(id, d.Attributes)
 		return &n, nil
 	}
+}
+
+func Damage(l logrus.FieldLogger, span opentracing.Span) func(worldId byte, channelId byte, mapId uint32, uniqueId uint32, characterId uint32, damage uint32) {
+	return emitDamage(l, span)
 }
 
 func makeMonster(id uint32, att attributes) Monster {

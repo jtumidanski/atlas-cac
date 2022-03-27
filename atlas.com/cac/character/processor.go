@@ -30,7 +30,7 @@ func ProcessAttack(l logrus.FieldLogger, span opentracing.Span) func(worldId byt
 		}
 
 		if !ranged && !magic {
-			CloseRangeAttack(l, span)(worldId, channelId, mapId, characterId, skillId, skillLevel, attackedAndDamaged, display, direction, stance, speed, allDamage)
+			emitCloseRangeAttack(l, span)(worldId, channelId, mapId, characterId, skillId, skillLevel, attackedAndDamaged, display, direction, stance, speed, allDamage)
 		} else if ranged {
 			// ranged
 		} else if magic {
@@ -38,7 +38,7 @@ func ProcessAttack(l logrus.FieldLogger, span opentracing.Span) func(worldId byt
 			if skill.Is(skillId, skill.EvanFireBreath, skill.EvanIceBreath, skill.FirePoisonArchMagicianBigBang, skill.IceLighteningArchMagicianBigBang, skill.BishopBigBang) {
 				adjustedCharge = int32(charge)
 			}
-			MagicAttack(l, span)(worldId, channelId, mapId, characterId, skillId, skillLevel, attackedAndDamaged, display, direction, stance, speed, adjustedCharge, allDamage)
+			emitMagicAttack(l, span)(worldId, channelId, mapId, characterId, skillId, skillLevel, attackedAndDamaged, display, direction, stance, speed, adjustedCharge, allDamage)
 			attackCount = attackEffect.AttackCount()
 			if attackEffect.Cooldown() > 0 {
 				// apply cooldown
@@ -50,7 +50,7 @@ func ProcessAttack(l logrus.FieldLogger, span opentracing.Span) func(worldId byt
 		l.Debugf("Attack count %d.", attackCount)
 
 		for k, v := range allDamage {
-			m, err := monster.GetMonster(l, span)(k)
+			m, err := monster.GetById(l, span)(k)
 			if err != nil {
 				l.WithError(err).Errorf("Cannot locate monster %d which the attack from %d hit.", k, characterId)
 				continue
@@ -105,7 +105,7 @@ func processMPChange(l logrus.FieldLogger, span opentracing.Span) func(worldId b
 			mpChange -= int16(effect.MPCon()) * int16(mod)
 			//TODO  account for infinity and concentrate
 		}
-		AdjustMana(l, span)(characterId, mpChange)
+		emitManaAdjustment(l, span)(characterId, mpChange)
 	}
 }
 
@@ -134,7 +134,7 @@ func applyMPEater(l logrus.FieldLogger, span opentracing.Span) func(worldId byte
 		}
 
 		//TODO determine if mob is boss, skip if not
-		m, err := monster.GetMonster(l, span)(mobId)
+		m, err := monster.GetById(l, span)(mobId)
 		if err != nil {
 			l.WithError(err).Errorf("Unable to locate monster to apply MP Eater to.")
 			return
@@ -147,8 +147,8 @@ func applyMPEater(l logrus.FieldLogger, span opentracing.Span) func(worldId byte
 
 		l.Debugf("Applying MP Eater for character %d attack. They gained %d mana as a result.", characterId, mp)
 		//TODO lower monster mana
-		AdjustMana(l, span)(characterId, int16(mp))
-		ShowMPEater(l, span)(worldId, channelId, mapId, characterId, skillId)
+		emitManaAdjustment(l, span)(characterId, int16(mp))
+		showMPEater(l, span)(worldId, channelId, mapId, characterId, skillId)
 	}
 }
 

@@ -1,8 +1,7 @@
 package character
 
 import (
-	"atlas-cac/kafka/consumers"
-	"atlas-cac/kafka/handler"
+	"atlas-cac/kafka"
 	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
 )
@@ -35,11 +34,11 @@ type attackCommand struct {
 	Y                        int16               `json:"y"`
 }
 
-func NewConsumer(groupId string) consumers.Config[attackCommand] {
-	return consumers.NewConfiguration[attackCommand](consumerName, topicToken, groupId, HandleAttackCommand())
+func NewConsumer(groupId string) kafka.ConsumerConfig {
+	return kafka.NewConsumerConfig[attackCommand](consumerName, topicToken, groupId, HandleAttackCommand())
 }
 
-func HandleAttackCommand() handler.EventHandler[attackCommand] {
+func HandleAttackCommand() kafka.HandlerFunc[attackCommand] {
 	return func(l logrus.FieldLogger, span opentracing.Span, command attackCommand) {
 		err := ProcessAttack(l, span)(command.WorldId, command.ChannelId, command.MapId, command.CharacterId, command.SkillId, command.SkillLevel, command.NumberAttacked, command.NumberDamaged,
 			command.NumberAttackedAndDamaged, command.Stance, command.Direction, command.RangedDirection, command.Charge, command.Display,

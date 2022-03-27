@@ -1,7 +1,6 @@
-package consumers
+package kafka
 
 import (
-	"atlas-cac/kafka/handler"
 	"atlas-cac/retry"
 	"atlas-cac/topic"
 	"context"
@@ -15,31 +14,47 @@ import (
 	"time"
 )
 
-func CreateEventConsumers[E any](l *logrus.Logger, ctx context.Context, wg *sync.WaitGroup, configs ...Config[E]) {
+func CreateConsumers(l *logrus.Logger, ctx context.Context, wg *sync.WaitGroup, configs ...ConsumerConfig) {
 	for _, c := range configs {
-		go NewConsumer(l, ctx, wg, c)
+		go createConsumer(l, ctx, wg, c)
 	}
 }
 
-func NewConfiguration[E any](name string, topicToken string, groupId string, handler handler.EventHandler[E]) Config[E] {
-	return Config[E]{
+func NewConsumerConfig[E any](name string, topicToken string, groupId string, handler HandlerFunc[E]) ConsumerConfig {
+	return ConsumerConfig{
 		name:       name,
 		topicToken: topicToken,
 		groupId:    groupId,
-		handler:    handler,
 		maxWait:    500,
+		handler:    adapt(handler),
 	}
 }
 
-type Config[E any] struct {
+type ConsumerConfig struct {
 	name       string
 	topicToken string
 	groupId    string
-	handler    handler.EventHandler[E]
 	maxWait    time.Duration
+	handler    messageHandler
 }
 
-func NewConsumer[E any](cl *logrus.Logger, ctx context.Context, wg *sync.WaitGroup, c Config[E]) {
+type messageHandler func(l logrus.FieldLogger, span opentracing.Span, msg kafka.Message)
+
+type HandlerFunc[E any] func(logrus.FieldLogger, opentracing.Span, E)
+
+func adapt[E any](eh HandlerFunc[E]) messageHandler {
+	return func(l logrus.FieldLogger, span opentracing.Span, msg kafka.Message) {
+		var event E
+		err := json.Unmarshal(msg.Value, &event)
+		if err != nil {
+			l.WithError(err).Errorf("Could not unmarshal event into %s.", msg.Value)
+		} else {
+			eh(l, span, event)
+		}
+	}
+}
+
+func createConsumer(cl *logrus.Logger, ctx context.Context, wg *sync.WaitGroup, c ConsumerConfig) {
 	initSpan := opentracing.StartSpan("consumer_init")
 	t := topic.GetRegistry().Get(cl, initSpan, c.topicToken)
 	initSpan.Finish()
@@ -82,24 +97,18 @@ func NewConsumer[E any](cl *logrus.Logger, ctx context.Context, wg *sync.WaitGro
 				l.WithError(err).Errorf("Could not successfully read message.")
 			} else {
 				l.Infof("Message received %s.", string(msg.Value))
-				var event E
-				err = json.Unmarshal(msg.Value, &event)
-				if err != nil {
-					l.WithError(err).Errorf("Could not unmarshal event into %s.", msg.Value)
-				} else {
-					go func() {
-						headers := make(map[string]string)
-						for _, header := range msg.Headers {
-							headers[header.Key] = string(header.Value)
-						}
+				go func() {
+					headers := make(map[string]string)
+					for _, header := range msg.Headers {
+						headers[header.Key] = string(header.Value)
+					}
 
-						spanContext, _ := opentracing.GlobalTracer().Extract(opentracing.TextMap, opentracing.TextMapCarrier(headers))
-						span := opentracing.StartSpan(c.name, opentracing.FollowsFrom(spanContext))
-						defer span.Finish()
+					spanContext, _ := opentracing.GlobalTracer().Extract(opentracing.TextMap, opentracing.TextMapCarrier(headers))
+					span := opentracing.StartSpan(c.name, opentracing.FollowsFrom(spanContext))
+					defer span.Finish()
 
-						c.handler(l, span, event)
-					}()
-				}
+					c.handler(l, span, msg)
+				}()
 			}
 		}
 	}()

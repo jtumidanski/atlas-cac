@@ -2,7 +2,7 @@ package main
 
 import (
 	"atlas-cac/character"
-	"atlas-cac/kafka/consumers"
+	"atlas-cac/kafka"
 	"atlas-cac/logger"
 	"atlas-cac/tracing"
 	"context"
@@ -34,7 +34,7 @@ func main() {
 		}
 	}(tc)
 
-	consumers.CreateEventConsumers(l, ctx, wg,
+	kafka.CreateConsumers(l, ctx, wg,
 		character.NewConsumer(consumerGroupId))
 
 	// trap sigterm or interrupt and gracefully shutdown the server
