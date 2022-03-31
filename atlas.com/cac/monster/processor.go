@@ -1,20 +1,22 @@
 package monster
 
 import (
+	"atlas-cac/model"
+	"atlas-cac/rest/requests"
 	"github.com/opentracing/opentracing-go"
 	"github.com/sirupsen/logrus"
+	"strconv"
 )
 
-func GetById(l logrus.FieldLogger, span opentracing.Span) func(id uint32) (*Monster, error) {
-	return func(id uint32) (*Monster, error) {
-		resp, err := getById(id)(l, span)
-		if err != nil {
-			return nil, err
-		}
+func ByIdModelProvider(l logrus.FieldLogger, span opentracing.Span) func(id uint32) model.Provider[Model] {
+	return func(id uint32) model.Provider[Model] {
+		return requests.Provider[attributes, Model](l, span)(getById(id), makeModel)
+	}
+}
 
-		d := resp.Data()
-		n := makeMonster(id, d.Attributes)
-		return &n, nil
+func GetById(l logrus.FieldLogger, span opentracing.Span) func(id uint32) (Model, error) {
+	return func(id uint32) (Model, error) {
+		return ByIdModelProvider(l, span)(id)()
 	}
 }
 
@@ -22,6 +24,11 @@ func Damage(l logrus.FieldLogger, span opentracing.Span) func(worldId byte, chan
 	return emitDamage(l, span)
 }
 
-func makeMonster(id uint32, att attributes) Monster {
-	return NewMonster(id, att.ControlCharacterId, att.MonsterId, att.X, att.Y, att.Stance, att.FH, att.Team, att.MaxHp, att.Hp, att.MaxMp, att.Mp)
+func makeModel(body requests.DataBody[attributes]) (Model, error) {
+	id, err := strconv.ParseUint(body.Id, 10, 32)
+	if err != nil {
+		return Model{}, err
+	}
+	att := body.Attributes
+	return NewMonster(uint32(id), att.ControlCharacterId, att.MonsterId, att.X, att.Y, att.Stance, att.FH, att.Team, att.MaxHp, att.Hp, att.MaxMp, att.Mp), nil
 }
